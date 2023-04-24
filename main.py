@@ -110,6 +110,7 @@ if __name__ == '__main__':
     print('test accuracy {:8.3f}'.format(accu_test))
 
     #Predicting using the model    
+    print('\nPredicting on new data...')
     df = pd.read_csv("dl/sample_text.txt", sep="|")
     for index, row in df.iterrows():
         print(f"Expected: {predict_model(network, row['text'])}, Actual: {row['label']}")
