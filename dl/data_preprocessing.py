@@ -8,10 +8,11 @@ class DataPreprocessingPipeline:
 
     def __init__(self, data_iter):
         '''
-        Initializes the DataPreprocessingPipeline object with the given dataset iterator.
+        Initializes the DataPreprocessingPipeline object with the given dataset iterator. Uses the basic english tokenizer
+        and calls the get_vocab function to get the text_transformer and label_transformer, and the vocab instance.
 
         Args:
-            data_iter (torchtext.datasets.Dataset): A dataset iterator
+            data_iter: A dataset iterator
         '''
         self.data_iter = data_iter
         self.tokenizer = get_tokenizer('basic_english')
@@ -23,7 +24,6 @@ class DataPreprocessingPipeline:
 
         Args:
             data_iter (torchtext.datasets.Dataset): A dataset iterator
-        
         Returns:
             list of strings: A list of individual words in a text data instance
         '''
@@ -32,8 +32,7 @@ class DataPreprocessingPipeline:
 
     def get_vocab(self):
         '''
-        Creates a vocabulary object based on the tokenized text data.
-
+        Creates a vocabulary object based on the tokenized text data. Any unknown tokens will be considered <unk>
         Returns:
             tuple of (callable, callable, torchtext.vocab.Vocab)
                 first callable: A function that transforms text into a tensor of numerical values based on the vocabulary
