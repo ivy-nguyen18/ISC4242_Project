@@ -1,7 +1,7 @@
 import torch
 from torchtext.datasets import AG_NEWS
 from dl.data_preprocessing import DataPreprocessingPipeline
-from dl.network import TextClassificationModel
+from dl.network import TextClassificationNetwork
 from dl.model import Model
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
@@ -23,13 +23,14 @@ params = {
 def collate_batch(batch):
     '''
     Given a batch of pairs of text data and label, each pair is processed as follows:
-    - converts labels to a numeric representation using DataPreprocessingPipeline
-    - convert text data to a tensor of integers using DataPreprocessingPipeline which tokenizes the text
-    - keeps track of offsets, which tracks the length of each tensor in the batch. Offsets are needed because text data has variable length. You could say it's like dynamic padding.
+    - converts labels to a numeric representation using DataPreprocessingPipeline's label_transform
+    - convert text data to a tensor of integers using DataPreprocessingPipeline's text_transform which tokenizes the text
+    - keeps track of offsets, which tracks the length of each tensor in the batch. Offsets are needed in the neural network because text data has variable length, Offsets are used in place of padding.  
+    And since we concatenated all the text data, we need to somehow keep track of when a piece of text ends and starts.
     Then, everything is converted to tensors
     - labels are converted to int64 tensors
-    - take everything but the last offset and then take cummulative sum, which would return where each text tensors starts. THen convert it to a tensor.
-    - convert text to tensors
+    - take everything but the last offset and then take cummulative sum. This would return where each text tensor starts. Then convert it to a tensor.
+    - concatenate text_list to a single tensor
 
     Args:
         batch: pairs of text data and labels
@@ -54,8 +55,8 @@ def predict(text, text_pipeline):
     '''
     Predicting the text. Since we are not training the model again, we don't use the gradients. 
     We put the text through the text processing pipeline. And then predict on the text by putting it 
-    through the netowrk. Then, since we are returned the softmax of the model, we want to get the index
-    with the maximum value, when we add 1 to the index because python starts at 0, this should return the
+    through the network. Then, since we are returned the softmax of the model, we want to get the index
+    with the maximum value. We add 1 to the index because python starts at 0, this should return the
     category.
     
     Args:
@@ -128,7 +129,7 @@ if __name__ == '__main__':
     dataloader = DataLoader(train_iter, batch_size=params['batch_size'], shuffle=False, collate_fn=collate_batch)
     num_class = len(set([label for (label, text) in train_iter]))
     vocab_size = len(dataPipeline.vocab)
-    network = TextClassificationModel(vocab_size, params['emsize'], num_class).to(device)
+    network = TextClassificationNetwork(vocab_size, params['emsize'], num_class).to(device)
 
     #Parameters to be used in the model
     criterion = torch.nn.CrossEntropyLoss()

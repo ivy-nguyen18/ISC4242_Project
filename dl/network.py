@@ -1,23 +1,29 @@
 from torch import nn
 
-class TextClassificationModel(nn.Module):
+class TextClassificationNetwork(nn.Module):
     '''
     A module representing the Neural Network Architecture for Text Classification
     '''
 
     def __init__(self, vocab_size, embed_dim, num_class):
         '''
-        Initialization of TextClassificationModel module.
+        Initialization of TextClassificationNetwork module.
         The layers are defined as follows:
-        - EmbeddingBag: break down the word tokens to numbers which are called word embeddings. EmbeddingBag combines all word embeddings into a bag of embeddings, sums it up and then takes the average.
+        - EmbeddingBag: Initialized with the vocab size (the number of unique words in the dataset) and the embed_dim (the number of attributes used to represent each word - similar to complexity)
+            - Instead of treating words independently, we want to use Embeddings to encode semantic similarity in words
+            - Given a tensor of word indices (after the preprocessing step):
+                - Looks up the embedding for each word index in the input tensor using a weight matrix (vocab X embed_dim), that is initially random before training
+                - The weight matrix is like a look up table where each row is a word and each column is some attribute. It contains vectors of weights that can be used to represent each word in the vocab.
+                - The embedded vectors of each word in the input vector is reduced by taking the mean (default reduction mode)
+                - Outputs a tensor that represents the overall embedding of the input text
         - Linear: a linear layer which predicts what category the text belongs to
-        - init_weights: used to "randomly" initialize weights for the parameters of the model, so the model can "learn"
+        - init_weights: used to randomly initialize weights for the parameters of the model, so the model can learn
         Args:
             vocab_size: The size of the vocabulary
             embed_dim: The dimensionality of the embedding space
             num_class: The number of classes
         '''
-        super(TextClassificationModel, self).__init__()
+        super(TextClassificationNetwork, self).__init__()
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.fc = nn.Linear(embed_dim, num_class)
         self.init_weights()
@@ -34,7 +40,7 @@ class TextClassificationModel(nn.Module):
     def forward(self, text, offsets):
         '''
         Performs the forward pass of the model. Using nn.EmbeddingBag, we convert the input word indices to dense vectors by looking up the
-        embeddings of each index in a learned embedding table, this essentially converts the words to numbers. Then using self.fc (an instance od the nn.Linear), which does
+        embeddings of each index in a learned embedding table, this essentially converts the words to vectors. Then using self.fc (an instance of the nn.Linear), do
         a linear transformation of the embedded representation to get a score for each class.
 
         Args:

@@ -27,7 +27,7 @@ class Model:
         - set the gradients of the networks parameters to 0
         - send the text and offsets to the network to get a predicted label
         - get the loss by comparing the actual and predicted dataset
-        - perform a backpropagation to update the gradients based on the loss
+        - perform a backpropagation to update the embedded weights based on the loss
         - perform gradient clipping (clip_grad_norm) to avoid exploding gradients
         - use the optimizer to update the network parameters
         - calculate the total accuracy by comparing the predicted labels with the true labels over the total samples
@@ -67,7 +67,7 @@ class Model:
         '''
         Evaluate the model on the given data, thus the gradients are not needed. For each label, text, and offset, they are sent to the network
         to evaluate the output's loss, using the given loss function. We calculate loss accuracy by comparing the predicted labels with the actual label,
-        which should return the number of correct predictions. We return the number of correct predictions over the total number of samples in the dataset.
+        which should output the number of correct predictions. We return the number of correct predictions over the total number of samples in the dataset.
 
         Args:
             dataloader: A PyTorch DataLoader object containing the evaluation data.

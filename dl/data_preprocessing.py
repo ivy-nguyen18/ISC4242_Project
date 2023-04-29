@@ -20,10 +20,10 @@ class DataPreprocessingPipeline:
 
     def yield_tokens(self, data_iter):
         '''
-        A generator method that tokenizes text data into individual words.
+        A generator method that tokenizes text data into individual words based on the "basic_english" tokenizer.
 
         Args:
-            data_iter (torchtext.datasets.Dataset): A dataset iterator
+            data_iter: A dataset iterator
         Returns:
             list of strings: A list of individual words in a text data instance
         '''
@@ -32,7 +32,9 @@ class DataPreprocessingPipeline:
 
     def get_vocab(self):
         '''
-        Creates a vocabulary object based on the tokenized text data. Any unknown tokens will be considered <unk>
+        Creates a vocabulary object based on the tokenized text data. The vocab object maps tokens to indices. 
+        This ensures that each word in the text is represented by a unique index (like a dictionary)
+        Any unknown tokens will be considered <unk>
         Returns:
             tuple of (callable, callable, torchtext.vocab.Vocab)
                 first callable: A function that transforms text into a tensor of numerical values based on the vocabulary
