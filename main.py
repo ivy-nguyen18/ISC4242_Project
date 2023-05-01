@@ -6,19 +6,11 @@ from dl.model import Model
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
 from torchtext.data.functional import to_map_style_dataset
+import matplotlib.pyplot as plt
 import time
 import pandas as pd
+from dl.parameters import standard_params, param1, param2, param3, param4, param5
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-params = {
-    'emsize' : 64,
-    'epochs': 10,
-    'lr': 5,
-    'batch_size': 64,
-    'percent_train': 0.95,
-    'step_size': 1.0,
-    'gamma': 0.1
-,}
 
 def collate_batch(batch):
     '''
@@ -88,7 +80,7 @@ def predict_model(network,ex_text_str):
     network = network.to("cpu")
     return ag_news_label[predict(ex_text_str, dataPipeline.text_transform)]
 
-def train_model(train_dataloader,valid_dataloader, scheduler, model):
+def train_model(train_dataloader,valid_dataloader, scheduler, model, standard_flag):
     '''
     This function trains the dataset and evaluates the dataset on a validation dataset over
     multiple epochs. It also keeps track of how long it takes to execute each batch.
@@ -108,65 +100,126 @@ def train_model(train_dataloader,valid_dataloader, scheduler, model):
         
     '''
     total_accu = None
+    train_accu = []
+    valid_accu = []
+    total_time = 0
     for epoch in range(1, params['epochs'] + 1):
         epoch_start_time = time.time()
-        model.train(train_dataloader, epoch)
+        accu_train = model.train(train_dataloader, epoch)
+        train_accu.append(accu_train)
         accu_val = model.evaluate(valid_dataloader)
+        valid_accu.append(accu_val)
         if total_accu is not None and total_accu > accu_val:
             scheduler.step()
         else:
             total_accu = accu_val
         print('-' * 59)
+        epoch_time = time.time() - epoch_start_time
         print('| end of epoch {:3d} | time: {:5.2f}s | '
-            'valid accuracy {:8.3f} '.format(epoch, time.time() - epoch_start_time, accu_val))
+            'valid accuracy {:8.3f} '.format(epoch, epoch_time, accu_val))
         print('-' * 59)
-     
+        total_time += epoch_time
+
+    # Plot graph for training and validation accuracy (only for standard parameters)
+    if standard_flag == 0:
+        plot_graph('train_val', train_accu, valid_accu)
+        standard_flag = 1
+
+    return total_time/epoch_time, standard_flag
+
+def plot_graph(type, data1, data2 = None, param_list = None):
+    '''
+    Additional function to visualize various parameter combinations and ranges as well as plot the train-validation data. 
+    To keep it simple, only using embed_dim, but applicable to other params as well. 
+
+    Args:
+        type: what type of graph we want to display
+        data1: first dataset
+        data2: Default None, second dataset
+        param_list: Default None, list of parameters to evaluate
+    '''
+    if type == 'train_val':
+        x = list(range(params['epochs']))
+        plt.plot(x, data1, label='Training data')
+        plt.plot(x, data2, label='Validation data')
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.legend()
+        plt.title('Train vs. Validation Accuracy')
+        plt.show()
+    elif type == 'embed':
+        x = []
+        for param in param_list:
+            x.append(param['emsize'])
+        sorted_lists = sorted(zip(x, data1, data2))
+        x, data1, data2 = zip(*sorted_lists)
+        x, data1 = zip(*sorted(zip(x, data1)))
+        plt.plot(x, data1)
+        plt.xlabel("Embedded Dimension size")
+        plt.ylabel("Test Accuracy")
+        plt.title('Comparing Embedded Dimension Sizes')
+        plt.show()
+
+        plt.plot(x, data2)
+        plt.xlabel("Embedded Dimension size")
+        plt.ylabel("Avg Time")
+        plt.title('Comparing Embedded Dimension Sizes')
+        plt.show()
+
+
 if __name__ == '__main__':
-    
-    #Preparing data to be sent into the neural network
-    train_iter = AG_NEWS(split='train')
-    dataPipeline = DataPreprocessingPipeline(train_iter)
-    dataloader = DataLoader(train_iter, batch_size=params['batch_size'], shuffle=False, collate_fn=collate_batch)
-    num_class = len(set([label for (label, text) in train_iter]))
-    vocab_size = len(dataPipeline.vocab)
-    network = TextClassificationNetwork(vocab_size, params['emsize'], num_class).to(device)
+    standard_flag = 0
+    params_list = [standard_params, param1, param2, param3, param4, param5]
+    test_acc_list = []
+    epoch_time = []
+    for params in params_list:
+        print(params)
+        #Preparing data to be sent into the neural network
+        train_iter = AG_NEWS(split='train')
+        dataPipeline = DataPreprocessingPipeline(train_iter)
+        dataloader = DataLoader(train_iter, batch_size=params['batch_size'], shuffle=False, collate_fn=collate_batch)
+        num_class = len(set([label for (label, text) in train_iter]))
+        vocab_size = len(dataPipeline.vocab)
+        network = TextClassificationNetwork(vocab_size, params['emsize'], num_class).to(device)
 
-    #Parameters to be used in the model
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(network.parameters(), params['lr'])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, params['step_size'], params['gamma'])
-    model = Model(network, optimizer, criterion)
+        #Parameters to be used in the model
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.SGD(network.parameters(), params['lr'])
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, params['step_size'], params['gamma'])
+        model = Model(network, optimizer, criterion)
 
-    #Getting Train-Test-Validation dataloaders
-    train_iter, test_iter = AG_NEWS()
-    train_dataset = to_map_style_dataset(train_iter)
-    test_dataset = to_map_style_dataset(test_iter)
-    num_train = int(len(train_dataset) * params['percent_train'])
-    split_train_, split_valid_ = random_split(train_dataset, [num_train, len(train_dataset) - num_train])
+        #Getting Train-Test-Validation dataloaders
+        train_iter, test_iter = AG_NEWS()
+        train_dataset = to_map_style_dataset(train_iter)
+        test_dataset = to_map_style_dataset(test_iter)
+        num_train = int(len(train_dataset) * params['percent_train'])
+        split_train_, split_valid_ = random_split(train_dataset, [num_train, len(train_dataset) - num_train])
 
-    train_dataloader = DataLoader(split_train_, batch_size=params['batch_size'],
-                                shuffle=True, collate_fn=collate_batch)
-    valid_dataloader = DataLoader(split_valid_, batch_size=params['batch_size'],
-                                shuffle=True, collate_fn=collate_batch)
-    test_dataloader = DataLoader(test_dataset, batch_size=params['batch_size'],
-                                shuffle=True, collate_fn=collate_batch)
+        train_dataloader = DataLoader(split_train_, batch_size=params['batch_size'],
+                                    shuffle=True, collate_fn=collate_batch)
+        valid_dataloader = DataLoader(split_valid_, batch_size=params['batch_size'],
+                                    shuffle=True, collate_fn=collate_batch)
+        test_dataloader = DataLoader(test_dataset, batch_size=params['batch_size'],
+                                    shuffle=True, collate_fn=collate_batch)
 
-    #Training the model
-    train_model(train_dataloader, valid_dataloader, scheduler, model)
-    
-    #Testing the model
-    print('Checking the results of test dataset.')
-    accu_test = model.evaluate(test_dataloader)
-    print('test accuracy {:8.3f}'.format(accu_test))
+        #Training the model
+        time_epoch, standard_flag = train_model(train_dataloader, valid_dataloader, scheduler, model, standard_flag)
+        epoch_time.append(time_epoch)
 
-    #Predicting using the model    
-    print('\nPredicting on new data...')
-    df = pd.read_csv("dl/sample_text.txt", sep="|")
-    for index, row in df.iterrows():
-        print(f"Expected: {predict_model(network, row['text'])}, Actual: {row['label']}")
+        #Testing the model
+        print('Checking the results of test dataset.')
+        accu_test = model.evaluate(test_dataloader)
+        test_acc_list.append(accu_test)
+        print('test accuracy {:8.3f}'.format(accu_test))
 
+        #Predicting using the model    
+        print('\nPredicting on new data...')
+        df = pd.read_csv("dl/sample_text.txt", sep="|")
+        for index, row in df.iterrows():
+            print(f"Expected: {predict_model(network, row['text'])}, Actual: {row['label']}")
 
-
+    plot_graph(type = 'embed', data1 = test_acc_list,data2 = epoch_time, param_list = params_list)
+   
 
 
 

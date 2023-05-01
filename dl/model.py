@@ -45,6 +45,7 @@ class Model:
         total_acc, total_count = 0, 0
         log_interval = 500
         start_time = time.time()
+        train_acc = 0
 
         for idx, (label, text, offsets) in enumerate(dataloader):
             self.optimizer.zero_grad()
@@ -55,13 +56,19 @@ class Model:
             self.optimizer.step()
             total_acc += (predicted_label.argmax(1) == label).sum().item()
             total_count += label.size(0)
-            if idx % log_interval == 0 and idx > 0:
+            idx +=1
+            if (idx % log_interval == 0 or idx%len(dataloader) == 0) and (idx+1 > 0):
                 elapsed = time.time() - start_time
                 print('| epoch {:3d} | {:5d}/{:5d} batches '
                     '| accuracy {:8.3f}'.format(epoch, idx, len(dataloader),
                                                 total_acc/total_count))
+                if idx%len(dataloader) == 0:
+                    train_acc = total_acc/total_count
+                
                 total_acc, total_count = 0, 0
                 start_time = time.time()
+
+        return train_acc
 
     def evaluate(self, dataloader):
         '''
